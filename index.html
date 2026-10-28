@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>בדיחה בלחיצה</title>
+  <meta name="description" content="כותבים נושא, לוחצים, ומקבלים בדיחה בעברית.">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Playpen+Sans+Hebrew:wght@500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --sun: #FFE15A;
+      --paper: #FFFFFF;
+      --ink: #2B1E4A;
+      --ink-soft: #4A3D6B;
+      --red: #F23D2F;
+      --blue: #2E9BFF;
+      --error: #C0261B;
+      --error-bg: #FFE8EC;
+      --hint: #756B92;
+      --ui-font: "Fredoka", system-ui, sans-serif;
+      --joke-font: "Playpen Sans Hebrew", system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; }
+
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      background-color: var(--sun);
+      background-image: url("assets/bg-doodles.svg"), url("assets/bg-dots.svg");
+      background-repeat: no-repeat, repeat;
+      background-position: top center, 0 0;
+      background-size: 440px auto, 16px 16px;
+      color: var(--ink);
+      font-family: var(--ui-font);
+      font-weight: 500;
+    }
+
+    .app {
+      max-width: 440px;
+      margin: 0 auto;
+      padding: 24px 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+
+    .logo {
+      display: block;
+      width: 300px;
+      max-width: 100%;
+      height: auto;
+      margin: 8px auto 0;
+    }
+
+    .intro {
+      margin: 0;
+      text-align: center;
+      font-size: 17px;
+      font-weight: 500;
+      color: var(--ink-soft);
+      line-height: 1.4;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    label {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    input {
+      width: 100%;
+      font: inherit;
+      font-size: 19px;
+      font-weight: 500;
+      color: var(--ink);
+      background: var(--paper);
+      border: 3px solid var(--ink);
+      border-radius: 18px;
+      padding: 12px 16px;
+      box-shadow: 4px 4px 0 var(--ink);
+      transform: rotate(0.6deg);
+      outline: none;
+    }
+
+    input::placeholder { color: var(--hint); opacity: 1; }
+
+    input:focus-visible {
+      box-shadow: 4px 4px 0 var(--ink), 0 0 0 4px var(--blue);
+    }
+
+    .go {
+      width: 100%;
+      min-height: 64px;
+      font: inherit;
+      font-size: 24px;
+      font-weight: 700;
+      color: #FFFFFF;
+      background: var(--red);
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      box-shadow: 0 8px 0 var(--ink);
+      transform: rotate(-1deg);
+      cursor: pointer;
+      margin-bottom: 8px;
+      transition: transform 80ms ease, box-shadow 80ms ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .go:focus-visible {
+      outline: none;
+      box-shadow: 0 8px 0 var(--ink), 0 0 0 4px var(--blue);
+    }
+
+    .go:active,
+    .go[aria-busy="true"] {
+      transform: rotate(-1deg) translateY(6px);
+      box-shadow: 0 2px 0 var(--ink);
+    }
+
+    .go:disabled { cursor: wait; }
+
+    .bubble {
+      position: relative;
+      min-height: 190px;
+      margin-top: 10px;
+      padding: 22px 20px;
+      background: var(--paper);
+      border: 3px solid var(--ink);
+      border-radius: 28px;
+      box-shadow: 6px 6px 0 var(--ink);
+      transform: rotate(-1.2deg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      text-align: center;
+    }
+
+    .mascot {
+      width: 118px;
+      height: auto;
+      display: block;
+    }
+
+    .message {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 500;
+      color: var(--ink-soft);
+      line-height: 1.4;
+    }
+
+    /* מצב בדיחה: הדמות בפינה הימנית העליונה, חצי בחוץ */
+    .bubble[data-state="joke"] {
+      align-items: stretch;
+      padding-top: 34px;
+    }
+
+    .bubble[data-state="joke"] .mascot {
+      position: absolute;
+      top: -40px;
+      right: -14px;
+      width: 86px;
+      transform: rotate(8deg);
+    }
+
+    .bubble[data-state="joke"] .message {
+      font-family: var(--joke-font);
+      font-size: 25px;
+      line-height: 1.55;
+      color: var(--ink);
+      text-align: right;
+    }
+
+    .bubble[data-state="error"] { background: var(--error-bg); }
+
+    .bubble[data-state="error"] .message {
+      color: var(--error);
+      font-weight: 600;
+    }
+
+    .footer {
+      margin-top: auto;
+      padding-top: 12px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--ink-soft);
+    }
+
+    /* תנועה */
+    @keyframes bob { 0%, 100% { translate: 0 0; } 50% { translate: 0 -5px; } }
+    @keyframes squash { 0%, 100% { scale: 1 1; } 50% { scale: 1.06 0.86; } }
+    @keyframes roll { 0%, 100% { rotate: 0deg; } 25% { rotate: -14deg; } 75% { rotate: 14deg; } }
+    @keyframes wobble { 0%, 100% { rotate: 0deg; } 25% { rotate: -10deg; } 75% { rotate: 10deg; } }
+
+    .bubble[data-state="idle"] .mascot { animation: bob 2.4s ease-in-out infinite; }
+    .bubble[data-state="think"] .mascot { animation: squash 0.5s ease-in-out infinite; transform-origin: 50% 100%; }
+    .bubble[data-state="joke"] .mascot { animation: roll 0.45s ease-in-out 4; }
+    .bubble[data-state="error"] .mascot { animation: wobble 0.5s ease-in-out 2; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <img class="logo" src="assets/logo.svg" width="300" height="158" alt="בדיחה בלחיצה">
+
+    <p class="intro">כותבים נושא, לוחצים, וצוחקים.<br>בלי נושא, מקבלים בדיחה כללית.</p>
+
+    <form id="joke-form" novalidate>
+      <div class="field">
+        <label for="topic">על מה הבדיחה?</label>
+        <input id="topic" name="topic" type="text" maxlength="100" placeholder="למשל: חתולים" autocomplete="off" enterkeyhint="go">
+      </div>
+      <button class="go" id="go" type="submit">תנו לי בדיחה!</button>
+    </form>
+
+    <section class="bubble" id="bubble" data-state="idle">
+      <img class="mascot" id="mascot" src="assets/mascot-idle.svg" width="118" height="110" alt="">
+      <p class="message" id="message" aria-live="polite">לוחצים על הכפתור, והבדיחה מופיעה כאן</p>
+    </section>
+
+    <footer class="footer">מיישם AI ואוטומציה · 53500</footer>
+  </main>
+
+  <script>
+    const form = document.getElementById("joke-form");
+    const input = document.getElementById("topic");
+    const button = document.getElementById("go");
+    const bubble = document.getElementById("bubble");
+    const mascot = document.getElementById("mascot");
+    const message = document.getElementById("message");
+
+    const BUTTON_TEXT = {
+      idle: "תנו לי בדיחה!",
+      think: "חושב...",
+      joke: "עוד בדיחה!",
+      error: "לנסות שוב",
+    };
+
+    function setState(state, text) {
+      bubble.dataset.state = state;
+      mascot.src = `assets/mascot-${state}.svg`;
+      message.textContent = text;
+      button.textContent = BUTTON_TEXT[state];
+      const busy = state === "think";
+      button.disabled = busy;
+      button.setAttribute("aria-busy", String(busy));
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (button.disabled) return;
+
+      const topic = input.value.trim().slice(0, 100);
+      setState("think", topic ? `מחפש בדיחה על ${topic}...` : "מחפש בדיחה...");
+
+      try {
+        const response = await fetch("/api/joke", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ topic }),
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (response.ok && typeof data.joke === "string" && data.joke) {
+          setState("joke", data.joke);
+        } else {
+          setState("error", data.error || "משהו השתבש. נסו שוב.");
+        }
+      } catch {
+        setState("error", "אין חיבור לשרת כרגע. נסו שוב.");
+      }
+    });
+  </script>
+</body>
+</html>
