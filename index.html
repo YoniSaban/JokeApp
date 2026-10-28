@@ -202,6 +202,38 @@
       font-weight: 600;
     }
 
+    .share {
+      align-self: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      margin-top: 6px;
+      padding: 8px 28px;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--ink);
+      text-decoration: none;
+      background: #25D366;
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      box-shadow: 0 5px 0 var(--ink);
+      transform: rotate(1deg);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .share[hidden] { display: none; }
+
+    .share:focus-visible {
+      outline: none;
+      box-shadow: 0 5px 0 var(--ink), 0 0 0 4px var(--blue);
+    }
+
+    .share:active {
+      transform: rotate(1deg) translateY(4px);
+      box-shadow: 0 1px 0 var(--ink);
+    }
+
     .footer {
       margin-top: auto;
       padding-top: 12px;
@@ -245,6 +277,8 @@
       <p class="message" id="message" aria-live="polite">לוחצים על הכפתור, והבדיחה מופיעה כאן</p>
     </section>
 
+    <a class="share" id="share" href="#" target="_blank" rel="noopener" hidden>שתפו</a>
+
     <footer class="footer">מיישם AI ואוטומציה · 53500</footer>
   </main>
 
@@ -255,6 +289,7 @@
     const bubble = document.getElementById("bubble");
     const mascot = document.getElementById("mascot");
     const message = document.getElementById("message");
+    const share = document.getElementById("share");
 
     const BUTTON_TEXT = {
       idle: "תנו לי בדיחה!",
@@ -271,6 +306,12 @@
       const busy = state === "think";
       button.disabled = busy;
       button.setAttribute("aria-busy", String(busy));
+
+      share.hidden = state !== "joke";
+      if (state === "joke") {
+        const shareText = `${text}\n\nמתוך בדיחה בלחיצה: ${location.origin}`;
+        share.href = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+      }
     }
 
     form.addEventListener("submit", async (event) => {
