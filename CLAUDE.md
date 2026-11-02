@@ -5,6 +5,11 @@
 - מסמכי האיפיון בתיקייה spec: ‏PRD.md, ‏ARCHITECTURE.md, ‏DESIGN.md, ‏MILESTONES.md, ‏MVP.md, ‏tech-stack.md, ‏course-stack.md, ‏product-10-definitions.md, ותמונות הייחוס wireframes.png, ‏mockups.png, ‏style-guide.png.
 - תיקיית assets נשארת בשורש, כי האפליקציה משתמשת בה.
 
+## נתונים
+- השמירה ב-Supabase, בטבלה public.jokes. את הטבלה, ה-migrations וה-advisors מנהלים דרך המחבר של Supabase.
+- רק הפונקציות בתיקיית api מדברות עם Supabase, דרך הלקוח היחיד ב-lib/supabase.js. הדף מדבר רק עם /api.
+- הטבלה נעולה: RLS בלי policy, והרשאות ל-service_role בלבד.
+
 ## מודל
 - כל העבודה, בהקמה ובכל מיילסטון, נעשית עם Opus.
 
@@ -16,7 +21,8 @@
 - אל תבקש ממני אף מפתח, ואל תכתוב או תקרא מפתח בשום קובץ.
 - מפתח ה-production אני שומר ב-Vercel (Secret, בסביבות Production ו-Preview). מפתח ה-dev אני מדביק בעצמי ב-.env.local.
 - ‏.claude/settings.json חוסם את הקריאה של .env ושל .env.*.
-- ‏.env.example מכיל רק את השורה OPENAI_API_KEY=, בלי ערך ובלי הערות.
+- ‏.env.example מכיל רק את השורות OPENAI_API_KEY=, SUPABASE_URL= ו-SUPABASE_SECRET_KEY=, בלי ערכים ובלי הערות.
+- ‏SUPABASE_SECRET_KEY ו-SUPABASE_URL אני שם בעצמי ב-Vercel. אל תבקש אותם ממני.
 - ‏.gitignore מתעלם מ-.env, מ-.env.*, מ-.vercel ומ-node_modules, עם החריגה !.env.example. בודקים שהשלושה קיימים לפני כל commit.
 
 ## Git ופריסה
