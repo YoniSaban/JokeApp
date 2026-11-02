@@ -1,5 +1,7 @@
-// בדיחה בלחיצה: הפונקציה היחידה, והמקום היחיד שקורא את המפתח.
-// Milestone 2: מבקשת בדיחה מ-GPT-5 דרך Responses API, ומחזירה לדף רק את הבדיחה.
+// בדיחה בלחיצה: המקום היחיד שקורא את מפתח OpenAI.
+// מבקשת בדיחה מ-GPT-5 דרך Responses API, שומרת אותה ב-Supabase, ומחזירה לדף את הבדיחה ואת ה-id שלה.
+
+import { getSupabase } from "../lib/supabase.js";
 
 const MAX_TOPIC = 100;
 const OPENAI_URL = "https://api.openai.com/v1/responses";
@@ -39,6 +41,30 @@ function extractText(data) {
     }
   }
   return parts.join("").trim();
+}
+
+// שמירה שנכשלה לא עוצרת את הבדיחה: מחזירה null, והשגיאה נרשמת ב-console.error
+async function saveJoke(topic, text) {
+  try {
+    const supabase = getSupabase();
+    if (!supabase) {
+      console.error("joke save error: SUPABASE_URL or SUPABASE_SECRET_KEY is missing");
+      return null;
+    }
+    const { data, error } = await supabase
+      .from("jokes")
+      .insert({ topic: topic || null, text })
+      .select("id")
+      .single();
+    if (error) {
+      console.error(`joke save error: ${error.code} ${error.message}`);
+      return null;
+    }
+    return data.id;
+  } catch (err) {
+    console.error(`joke save error: ${err?.name} ${err?.message}`);
+    return null;
+  }
 }
 
 // הודעה קצרה בעברית לדף, לפי הסטטוס והקוד ש-OpenAI החזיר
@@ -107,6 +133,7 @@ export default {
       return json({ error: "התשובה הגיעה ריקה. נסו שוב." }, 502);
     }
 
-    return json({ joke });
+    const id = await saveJoke(topic, joke);
+    return json(id ? { joke, id } : { joke });
   },
 };

@@ -202,13 +202,119 @@
       font-weight: 600;
     }
 
+    .actions {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 6px;
+    }
+
+    .actions:not(:has(> :not([hidden]))) { display: none; }
+
+    .laugh {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 48px;
+      padding: 8px 22px;
+      font: inherit;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--ink);
+      background: var(--sun);
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      box-shadow: 0 5px 0 var(--ink);
+      transform: rotate(-1deg);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .laugh[hidden] { display: none; }
+
+    .laugh-count {
+      min-width: 30px;
+      padding: 0 8px;
+      background: var(--paper);
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      font-size: 17px;
+    }
+
+    .laugh:focus-visible {
+      outline: none;
+      box-shadow: 0 5px 0 var(--ink), 0 0 0 4px var(--blue);
+    }
+
+    .laugh:active:not(:disabled) {
+      transform: rotate(-1deg) translateY(4px);
+      box-shadow: 0 1px 0 var(--ink);
+    }
+
+    .laugh:disabled {
+      cursor: default;
+      background: var(--paper);
+      transform: rotate(-1deg) translateY(4px);
+      box-shadow: 0 1px 0 var(--ink);
+    }
+
+    .top {
+      margin-top: 8px;
+      padding: 18px 18px 8px;
+      background: var(--paper);
+      border: 3px solid var(--ink);
+      border-radius: 24px;
+      box-shadow: 5px 5px 0 var(--ink);
+      transform: rotate(0.6deg);
+    }
+
+    .top[hidden] { display: none; }
+
+    .top h2 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .top ol {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .top li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 0;
+      border-top: 2px dashed var(--hint);
+    }
+
+    .top li:first-child { border-top: none; }
+
+    .top-text {
+      flex: 1;
+      font-family: var(--joke-font);
+      font-size: 17px;
+      line-height: 1.5;
+    }
+
+    .top-count {
+      flex-shrink: 0;
+      padding: 2px 10px;
+      background: var(--sun);
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
     .share {
-      align-self: center;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       min-height: 48px;
-      margin-top: 6px;
       padding: 8px 28px;
       font-size: 20px;
       font-weight: 700;
@@ -277,7 +383,15 @@
       <p class="message" id="message" aria-live="polite">לוחצים על הכפתור, והבדיחה מופיעה כאן</p>
     </section>
 
-    <a class="share" id="share" href="#" target="_blank" rel="noopener" hidden>שתפו</a>
+    <div class="actions">
+      <button class="laugh" id="laugh" type="button" hidden>צחקתי <span class="laugh-count" id="laugh-count">0</span></button>
+      <a class="share" id="share" href="#" target="_blank" rel="noopener" hidden>שתפו</a>
+    </div>
+
+    <section class="top" id="top" hidden>
+      <h2>הכי מצחיקות</h2>
+      <ol id="top-list"></ol>
+    </section>
 
     <footer class="footer">מיישם AI ואוטומציה · 53500</footer>
   </main>
@@ -290,6 +404,39 @@
     const mascot = document.getElementById("mascot");
     const message = document.getElementById("message");
     const share = document.getElementById("share");
+    const laugh = document.getElementById("laugh");
+    const laughCount = document.getElementById("laugh-count");
+    const topBox = document.getElementById("top");
+    const topList = document.getElementById("top-list");
+
+    const LAUGHED_KEY = "laughed";
+    let currentId = null;
+
+    // ה-id של בדיחות שכבר צחקו עליהן, כדי שרענון לא יפתח את הכפתור מחדש
+    function readLaughed() {
+      try {
+        const ids = JSON.parse(localStorage.getItem(LAUGHED_KEY) || "[]");
+        return Array.isArray(ids) ? ids : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function markLaughed(id) {
+      try {
+        const ids = readLaughed().filter((x) => x !== id);
+        ids.push(id);
+        localStorage.setItem(LAUGHED_KEY, JSON.stringify(ids.slice(-200)));
+      } catch {}
+    }
+
+    function showLaugh(id, count) {
+      currentId = id;
+      laugh.hidden = !id;
+      if (!id) return;
+      laughCount.textContent = String(count);
+      laugh.disabled = readLaughed().includes(id);
+    }
 
     const BUTTON_TEXT = {
       idle: "תנו לי בדיחה!",
@@ -311,8 +458,56 @@
       if (state === "joke") {
         const shareText = `${text}\n\nמתוך בדיחה בלחיצה: ${location.origin}`;
         share.href = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+      } else {
+        showLaugh(null);
       }
     }
+
+    async function loadTop() {
+      try {
+        const response = await fetch("/api/top");
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !Array.isArray(data.top)) return;
+        topList.replaceChildren(
+          ...data.top.map((item) => {
+            const li = document.createElement("li");
+            const text = document.createElement("span");
+            text.className = "top-text";
+            text.textContent = item.text;
+            const count = document.createElement("span");
+            count.className = "top-count";
+            count.textContent = item.laughs === 1 ? "צחוק אחד" : `${item.laughs} צחוקים`;
+            li.append(text, count);
+            return li;
+          })
+        );
+        topBox.hidden = data.top.length === 0;
+      } catch {}
+    }
+
+    laugh.addEventListener("click", async () => {
+      const id = currentId;
+      if (!id || laugh.disabled) return;
+      laugh.disabled = true;
+
+      try {
+        const response = await fetch("/api/laugh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && typeof data.laughs === "number") {
+          markLaughed(id);
+          if (currentId === id) laughCount.textContent = String(data.laughs);
+          loadTop();
+        } else if (currentId === id) {
+          laugh.disabled = false;
+        }
+      } catch {
+        if (currentId === id) laugh.disabled = false;
+      }
+    });
 
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -331,6 +526,7 @@
 
         if (response.ok && typeof data.joke === "string" && data.joke) {
           setState("joke", data.joke);
+          showLaugh(typeof data.id === "string" ? data.id : null, 0);
         } else {
           setState("error", data.error || "משהו השתבש. נסו שוב.");
         }
@@ -338,6 +534,8 @@
         setState("error", "אין חיבור לשרת כרגע. נסו שוב.");
       }
     });
+
+    loadTop();
 
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
