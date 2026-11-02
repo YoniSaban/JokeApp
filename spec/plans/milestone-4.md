@@ -30,7 +30,7 @@
 
 ## סטטוס
 - [x] ה-spec עודכן
-- [ ] ה-SQL הוצג למשתמש (עצירה 1)
-- [ ] ה-migration רץ, ו-get_advisors נבדק
+- [x] ה-SQL הוצג למשתמש ואושר (עצירה 1)
+- [x] ה-migration רץ בפרויקט JokeApp. ‏get_advisors: הודעת INFO אחת, rls_enabled_no_policy, וזה המצב שרצינו. ביצועים: נקי
 - [ ] הקוד נבנה
 - [ ] המפתחות ב-Vercel (עצירה 2), ‏push ובדיקה בלינק החי
