@@ -1,5 +1,5 @@
 // Network-first service worker. Never touches /api, non-GET or cross-origin requests.
-const CACHE = "joke-v3";
+const CACHE = "joke-v4";
 
 const PRECACHE = [
   "/",
