@@ -35,6 +35,6 @@
 - [x] הקבצים נקראו, וה-SQL נשמר ב-db
 - [x] הקוד נבנה. נבדק מקומית: ‏config (חסר, סודי, תקין, ‏POST), ‏getUserFromRequest (תקין, 403, ‏500, בלי לקוח), ‏displayName, גוף גדול מדי, ‏joke עם טוקן כש-Supabase לא זמין, ‏delete-account בלי טוקן. בדפדפן מול API מדומה: כפתור החשבון, חלון הכניסה, הלשוניות, הודעות השגיאה, סגירה בלחיצה מחוץ לחלון וב-Escape, ושורת "נכתבה עכשיו בשבילך"
 - [x] ה-SQL אושר, והמשתמש הריץ אותו ב-SQL Editor (המחבר נחסם בהרשאות המקומיות). ‏get_advisors: אבטחה, ‏INFO אחד, rls_enabled_no_policy, כמו שרצינו. ביצועים: ‏INFO אחד, jokes_user_id_idx עוד לא בשימוש, וזה צפוי לאינדקס חדש. ההרשאות על הטבלה לא השתנו: service_role עם select, insert, update בלבד
-- [ ] הצעדים הידניים ב-Supabase וב-Vercel
-- [ ] push, ובדיקה בלינק החי
+- [x] הצעדים הידניים ב-Supabase. ‏SUPABASE_PUBLISHABLE_KEY כבר היה ב-Vercel (Production), מאינטגרציה של Supabase, והוא המפתח של JokeApp
+- [x] push, ובדיקה בלינק החי: הפריסה READY, ‏/api/config מחזיר את הכתובת והמפתח הציבורי של JokeApp, ‏/api/joke עם טוקן לא מוכר: 401 auth_required, ‏/api/delete-account בלי טוקן: 401, אין sb_publishable_ ואין sb_secret_ בדף וב-auth.js, ואין פניות ל-supabase.co לאורח
 - [ ] בדיקות המשתמש ואישור
