@@ -1,7 +1,9 @@
 // בדיחה בלחיצה: המקום היחיד שקורא את מפתח OpenAI.
-// מבקשת בדיחה מ-GPT-5 דרך Responses API, שומרת אותה ב-Supabase, ומחזירה לדף את הבדיחה ואת ה-id שלה.
+// מבקשת בדיחה מ-GPT-5 דרך Responses API, שומרת אותה ב-Supabase, ומחזירה לדף את הבדיחה, את ה-id שלה ואת שם הכותב.
+// משתמש מחובר מזוהה רק מהטוקן, עם supabase.auth.getUser.
 
-import { getSupabase } from "../lib/supabase.js";
+import { displayName, getSupabase, getUserFromRequest, hasToken } from "../lib/supabase.js";
+import { authRequired, json, readJson } from "../lib/http.js";
 
 const MAX_TOPIC = 100;
 const OPENAI_URL = "https://api.openai.com/v1/responses";
@@ -10,22 +12,11 @@ const TIMEOUT_MS = 25000;
 const INSTRUCTIONS =
   "אתה כותב בדיחות קצרות בעברית. כתוב בדיחה אחת בלבד, עד ארבעה משפטים, נקייה ומתאימה לכל גיל. בלי הקדמה, בלי הסבר ובלי אימוג׳י. רק הבדיחה.";
 
-function json(body, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json; charset=utf-8" },
-  });
-}
-
+// גוף שבור או גדול מדי נחשב "אין נושא"
 async function readTopic(request) {
-  try {
-    const body = await request.json();
-    const topic = typeof body?.topic === "string" ? body.topic.trim() : "";
-    return topic.slice(0, MAX_TOPIC);
-  } catch {
-    // גוף שבור נחשב "אין נושא"
-    return "";
-  }
+  const body = await readJson(request);
+  const topic = typeof body?.topic === "string" ? body.topic.trim() : "";
+  return topic.slice(0, MAX_TOPIC);
 }
 
 // output_text קיים רק ב-SDK. ב-REST הטקסט נמצא בפריטי message, בחלקים מסוג output_text.
@@ -44,16 +35,15 @@ function extractText(data) {
 }
 
 // שמירה שנכשלה לא עוצרת את הבדיחה: מחזירה null, והשגיאה נרשמת ב-console.error
-async function saveJoke(topic, text) {
+async function saveJoke(supabase, topic, text, user, authorName) {
   try {
-    const supabase = getSupabase();
     if (!supabase) {
       console.error("joke save error: SUPABASE_URL or SUPABASE_SECRET_KEY is missing");
       return null;
     }
     const { data, error } = await supabase
       .from("jokes")
-      .insert({ topic: topic || null, text })
+      .insert({ topic: topic || null, text, user_id: user?.id ?? null, author_name: authorName })
       .select("id")
       .single();
     if (error) {
@@ -93,7 +83,23 @@ export default {
       return json({ error: "השרת לא מוגדר עדיין. חסר מפתח." }, 500);
     }
 
-    console.log(`joke request: topic="${topic}" model=${model}`);
+    // יש טוקן: מזהים את המשתמש לפני OpenAI. טוקן ש-Supabase לא מכיר: 401, בלי לפנות ל-OpenAI.
+    // Supabase לא זמין: הבדיחה בכל זאת מגיעה, בלי שמירה.
+    const supabase = getSupabase();
+    let user = null;
+    let canSave = true;
+    if (hasToken(request)) {
+      try {
+        user = await getUserFromRequest(request, supabase);
+        if (!user) return authRequired();
+      } catch (err) {
+        console.error(`joke error: getUser failed: ${err?.name} ${err?.message}`);
+        canSave = false;
+      }
+    }
+    const authorName = user ? displayName(user) : null;
+
+    console.log(`joke request: topic="${topic}" model=${model} user=${user ? "yes" : "no"}`);
 
     let response;
     try {
@@ -133,7 +139,7 @@ export default {
       return json({ error: "התשובה הגיעה ריקה. נסו שוב." }, 502);
     }
 
-    const id = await saveJoke(topic, joke);
-    return json(id ? { joke, id } : { joke });
+    const id = canSave ? await saveJoke(supabase, topic, joke, user, authorName) : null;
+    return json({ joke, id, author_name: authorName });
   },
 };
