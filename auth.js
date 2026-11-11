@@ -5,6 +5,14 @@
 (function () {
   let client = null;
   let current = null;
+  let settings = null;
+
+  // החזרה מ-Google: נקרא לפני שהספרייה מחליפה את ?code= ומנקה את הכתובת
+  const returnParams = new URLSearchParams(location.search);
+  const hashParams = new URLSearchParams(location.hash.slice(1));
+  const oauthError = returnParams.get("error") || hashParams.get("error");
+  const oauthCode = returnParams.get("code");
+  let oauthResult = null;
   const listeners = new Set();
 
   const MESSAGES = {
@@ -20,6 +28,9 @@
     over_email_send_rate_limit: "יותר מדי ניסיונות. נסו שוב בעוד דקה.",
     auth_not_configured: "הכניסה עוד לא מוגדרת.",
     offline: "אין חיבור כרגע. נסו שוב.",
+    google_disabled: "הכניסה עם Google עוד לא מוגדרת.",
+    google_cancelled: "הכניסה עם Google בוטלה.",
+    google_failed: "הכניסה עם Google לא הצליחה. נסו שוב.",
   };
 
   function hebrew(error) {
@@ -70,6 +81,9 @@
       },
     });
 
+    settings = { url: config.url, key: config.publishableKey };
+
+    // עם ?code= הספרייה מחליפה אותו בטוקן (pkce) כבר בתוך getSession
     const { data } = await client.auth.getSession();
     current = data.session ?? null;
 
@@ -80,7 +94,19 @@
     return true;
   }
 
-  const ready = start();
+  // ?error=, או קוד שלא הוחלף: הודעה בעברית. הכתובת מתנקה בשני המקרים
+  function finishReturn() {
+    if (!oauthError && !oauthCode) return;
+    if (oauthError === "access_denied") oauthResult = MESSAGES.google_cancelled;
+    else if (oauthError || !current) oauthResult = MESSAGES.google_failed;
+    const tab = hashParams.has("error") || hashParams.has("access_token") ? "" : location.hash;
+    history.replaceState(null, "", location.pathname + tab);
+  }
+
+  const ready = start().then((ok) => {
+    finishReturn();
+    return ok;
+  });
 
   async function needClient() {
     const ok = await ready;
@@ -138,7 +164,32 @@
     return () => listeners.delete(listener);
   }
 
+  // כניסה עם Google. קודם בודקים ב-/auth/v1/settings, שעונה עם המפתח הציבורי, ש-Google דולק
+  async function google() {
+    const auth = (await needClient()).auth;
+    let enabled = false;
+    try {
+      const response = await fetch(`${settings.url}/auth/v1/settings`, {
+        headers: { apikey: settings.key },
+        cache: "no-store",
+      });
+      const data = await response.json().catch(() => ({}));
+      enabled = response.ok && data?.external?.google === true;
+    } catch {
+      throw fail("offline");
+    }
+    if (!enabled) throw fail("google_disabled");
+
+    const { error } = await auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${location.origin}/` },
+    });
+    if (error) throw new Error(hebrew(error));
+  }
+
   window.Auth = {
+    google,
+    oauthResult: () => oauthResult,
     ready,
     signUp,
     signIn,

@@ -683,6 +683,41 @@
 
     .tab:focus-visible { outline: none; box-shadow: 0 0 0 4px var(--blue); }
 
+    /* בונוס Google: כפתור לבן, ומתחתיו קו מקווקו */
+    .google {
+      width: 100%;
+      min-height: 54px;
+      font: inherit;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--ink);
+      background: var(--paper);
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      box-shadow: 0 5px 0 var(--ink);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .google:focus-visible { outline: none; box-shadow: 0 5px 0 var(--ink), 0 0 0 4px var(--blue); }
+    .google:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink); }
+    .google:disabled { cursor: wait; opacity: 0.75; }
+
+    .or {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 16px 0;
+      font-size: 15px;
+      color: var(--ink-soft);
+    }
+
+    .or::before, .or::after {
+      content: "";
+      flex: 1;
+      border-top: 2px dashed var(--hint);
+    }
+
     .auth-form { gap: 12px; }
 
     .auth-form input { transform: none; font-size: 18px; padding: 10px 14px; }
@@ -878,6 +913,8 @@
     <button class="close" type="button" data-close aria-label="סגירה">×</button>
     <h2 id="login-title">כניסה</h2>
     <p class="notice" id="login-notice" hidden></p>
+    <button class="google" id="google-signin" type="button">המשך עם Google</button>
+    <p class="or">או עם מייל וסיסמה</p>
     <div class="tabs" role="tablist">
       <button class="tab" id="tab-signin" type="button" role="tab" aria-selected="true">כניסה</button>
       <button class="tab" id="tab-signup" type="button" role="tab" aria-selected="false">הרשמה</button>
@@ -1414,6 +1451,88 @@
         setState("error", "אין חיבור לשרת כרגע. נסו שוב.");
       }
     });
+
+    // ---- בונוס Google: מה שעל המסך נשמר לפני היציאה, ומשוחזר בחזרה ----
+    const RETURN_KEY = "google-return";
+    const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const googleButton = document.getElementById("google-signin");
+
+    googleButton.addEventListener("click", async () => {
+      if (googleButton.disabled) return;
+      googleButton.disabled = true;
+      authError.hidden = true;
+      const votes = jokeVotes.querySelector(".votes");
+      const joke = bubble.dataset.state === "joke"
+        ? { text: message.textContent, id: votes?.dataset.id ?? null, author: author.hidden ? "" : author.textContent }
+        : null;
+      try {
+        sessionStorage.setItem(RETURN_KEY, JSON.stringify({ at: Date.now(), view: currentView(), joke, vote: pendingVote }));
+      } catch {}
+      try {
+        if (!Auth) throw new Error("הכניסה עוד לא מוגדרת.");
+        await Auth.google();
+      } catch (err) {
+        try { sessionStorage.removeItem(RETURN_KEY); } catch {}
+        authError.textContent = err?.message || "הכניסה עם Google לא הצליחה. נסו שוב.";
+        authError.hidden = false;
+        googleButton.disabled = false;
+      }
+    });
+
+    // חזרה בכפתור "אחורה" מהמסך של Google
+    window.addEventListener("pageshow", () => { googleButton.disabled = false; });
+
+    function readReturn() {
+      try {
+        const raw = sessionStorage.getItem(RETURN_KEY);
+        sessionStorage.removeItem(RETURN_KEY);
+        const saved = raw ? JSON.parse(raw) : null;
+        return saved && Date.now() - Number(saved.at) < 15 * 60 * 1000 ? saved : null;
+      } catch {
+        return null;
+      }
+    }
+
+    const returned = readReturn();
+    const returnedVote =
+      returned?.vote && UUID.test(String(returned.vote.id)) && [1, -1].includes(returned.vote.value)
+        ? { id: returned.vote.id, value: returned.vote.value }
+        : null;
+
+    if (returned) {
+      if (VIEWS.includes(returned.view)) history.replaceState(null, "", `${location.pathname}${location.search}#${returned.view}`);
+      const joke = returned.joke;
+      if (typeof joke?.text === "string" && joke.text) {
+        setState("joke", joke.text);
+        showJokeVotes(UUID.test(String(joke.id)) ? joke.id : null);
+        if (typeof joke.author === "string" && joke.author) {
+          author.textContent = joke.author;
+          author.hidden = false;
+        }
+      }
+    }
+
+    if (Auth) {
+      Auth.ready.then(async () => {
+        if (returnedVote) {
+          if (Auth.session()) {
+            // ההצבעה שחיכתה לכניסה נשלחת מיד, ואז הרשימה הפתוחה נטענת מחדש
+            await sendVote(returnedVote.id, returnedVote.value);
+            const name = currentView();
+            if (name === "community") loadCommunity();
+            if (name === "liked") loadLiked();
+          } else {
+            pendingVote = returnedVote;
+          }
+        }
+        const problem = Auth.oauthResult();
+        if (problem) {
+          openLogin(pendingVote ? "כדי לדרג בדיחות צריך חשבון" : "");
+          authError.textContent = problem;
+          authError.hidden = false;
+        }
+      });
+    }
 
     showView();
 
